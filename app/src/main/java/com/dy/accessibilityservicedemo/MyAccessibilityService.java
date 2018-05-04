@@ -11,6 +11,9 @@ import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import static android.support.v4.view.accessibility.AccessibilityNodeInfoCompat.ACTION_CLICK;
+import static android.support.v4.view.accessibility.AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD;
+
 /**
  * @author DaiYao
  */
@@ -46,50 +49,53 @@ public class MyAccessibilityService extends AccessibilityService {
     private int xjCount = 0;
 
     private void findAllClientView(AccessibilityNodeInfo nodeClientView) {
-        if (nodeClientView != null) {
-            if (nodeClientView.getChildCount() == 0) {
-                String viewIdResourceName = nodeClientView.getViewIdResourceName();
-                CharSequence text = nodeClientView.getText();
+        AccessibilityNodeInfoCompat wrap = AccessibilityNodeInfoCompat.wrap(nodeClientView);
+        if (wrap.getChildCount() == 0) {
+            String viewIdResourceName = wrap.getViewIdResourceName();
+            CharSequence text = wrap.getText();
 
-                if (!TextUtils.isEmpty(text) || !TextUtils.isEmpty(viewIdResourceName)) {
-                    StringBuilder sBuffer = new StringBuilder();
-                    sBuffer.append("控件名称:").append(nodeClientView.getClassName())
-                            .append("   ")
-                            .append("控件中的值：")
-                            .append(text)
-                            .append("   ")
-                            .append("控件的ID:")
-                            .append(viewIdResourceName)
-                            .append("   ")
-                            .append("点击是否出现弹窗:")
-                            .append(nodeClientView.canOpenPopup())
-                            .append("   ");
+            if (!TextUtils.isEmpty(text) || !TextUtils.isEmpty(viewIdResourceName)) {
+                StringBuilder sBuffer = new StringBuilder();
+                sBuffer.append("控件名称:").append(wrap.getClassName())
+                        .append("   ")
+                        .append("控件中的值：")
+                        .append(text)
+                        .append("   ")
+                        .append("控件的ID:")
+                        .append(viewIdResourceName)
+                        .append("   ")
+                        .append("点击是否出现弹窗:")
+                        .append(wrap.canOpenPopup())
+                        .append("   ");
 
-                    try {
-                        Rect bounds = new Rect();
-                        nodeClientView.getBoundsInScreen(bounds);
+                try {
+                    Rect bounds = new Rect();
+                    wrap.getBoundsInScreen(bounds);
+                    sBuffer.append("控件在父视图位置:")
+                            .append(bounds);
+                } catch (Exception e) {
 
-                        sBuffer.append("控件在父视图位置:")
-                                .append(bounds);
-                    } catch (Exception e) {
-
-                    }
-                    Log.e(TAG, sBuffer.toString());
+                }
+                Log.e(TAG, sBuffer.toString());
 
 
-                    if ("相机".equals(text)) {
-                        xjCount++;
-                        sBuffer.append("相机次数:").append(xjCount);
-                        if (xjCount > 5) {
-//                            performGlobalAction(AccessibilityService.GESTURE_SWIPE_LEFT);
+                if ("相机".equals(text)) {
+                    xjCount++;
+                    sBuffer.append("相机次数:").append(xjCount);
+                    if (xjCount > 5) {
+                        AccessibilityNodeInfoCompat wrapParent = wrap.getParent();
+                        if (wrapParent.isScrollable()) {
+                            wrap.performAction(ACTION_SCROLL_BACKWARD);
                         }
+//                            performGlobalAction(AccessibilityService.GESTURE_SWIPE_LEFT);
                     }
                 }
-            } else {
-                for (int i = 0; i < nodeClientView.getChildCount(); i++) {
-                    if (nodeClientView.getChild(i) != null) {
-                        findAllClientView(nodeClientView.getChild(i));
-                    }
+                wrap.recycle();
+            }
+        } else {
+            for (int i = 0; i < nodeClientView.getChildCount(); i++) {
+                if (nodeClientView.getChild(i) != null) {
+                    findAllClientView(nodeClientView.getChild(i));
                 }
             }
         }
